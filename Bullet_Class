@@ -1,0 +1,72 @@
+class Bullet
+{
+  //Variables
+   PVector position;
+   PVector velocity;
+   int radius = 5;
+   int count = 0;
+   int timer = 40;
+
+   //Constructor
+   public Bullet(PVector pos, PVector vel)
+   {
+     position = pos;
+     velocity = vel;
+   } 
+  
+   //Direction
+   float headingTo(PVector vec)
+   {
+     //Like Clock ICE
+     return(float)(Math.atan2(vec.y, vec.x)); 
+   }
+ 
+   //Wrap bullets
+   void bounds()
+   {
+     if (position.x < 0)
+        position.x = width;
+     if (position.y < 0)
+        position.y = height;
+     if (position.x > width)
+        position.x = 0;
+     if (position.y > height)
+        position.y = 0;
+   }
+ 
+   boolean collision(ArrayList<Asteroid> asteroids)
+   {
+     for(Asteroid aa : asteroids)
+     {
+       PVector dist = PVector.sub(position, aa.position);
+       if(dist.mag() < aa.radius)
+       { 
+          aa.breakApart(asteroids); //Break asteroid if hit bounding circle
+          return true;
+       }
+     }
+     return false;
+   }
+   
+   //Move bullets
+   boolean update()
+   {
+     count++;
+     if(count >= timer) //Distance traveled
+       return true;
+       
+     position.add(velocity);
+     return false; 
+   }
+   
+   void display() //ACtual bullet
+   {
+     pushMatrix();
+     translate(position.x, position.y);
+     rotate(headingTo(velocity) + PI/2);
+     //Draw in
+     fill(0);
+     ellipse(-radius/2, -2 * radius, radius, radius * 5);
+     popMatrix();
+   }
+}
