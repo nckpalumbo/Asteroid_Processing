@@ -1,0 +1,264 @@
+//September 27, 2015
+
+//Player variables
+Player p1;
+boolean wPress = false;
+boolean aPress = false;
+boolean dPress = false;
+int maxLives = 3;
+int lives;
+int end = 1;
+
+float playerVel = 1.7;
+float rotationAng = .2;
+float bullSpeed = 10;
+int numAsteroids = 3;
+
+//Arrays
+ArrayList<Movement> smoke;
+ArrayList<Movement> flame;
+ArrayList<Bullet> bullets;
+ArrayList<Asteroid> asteroids;
+
+int startRadi = 50;
+PImage[] asteroidImgs = new PImage[3];
+PImage player, livesPlayer;
+
+//Instantiate/Setup
+void setup()
+{
+  size(1000, 600);
+  background(255);
+  p1 = new Player();
+  
+  //Load Images
+  asteroidImgs[0] = loadImage("BigAsteroid1.png");
+  asteroidImgs[1] = loadImage("BigAsteroid2.png");
+  asteroidImgs[2] = loadImage("BigAsteroid3.png");
+  player = loadImage("player.png");
+  livesPlayer = loadImage("Player2.png");
+  
+  frameRate(24);
+  lives = 3;
+  asteroids = new ArrayList<Asteroid>(0);
+}
+
+//Fire bullet
+void shoot()
+{
+  PVector bulletPos = new PVector(0, p1.r * 1.1);
+  rotateTo(bulletPos, headingTo(p1.rotation) + PI/2);
+  bulletPos.add(p1.position);
+  
+  PVector bulletVel = new PVector(0, bullSpeed);
+  rotateTo(bulletVel, headingTo(p1.rotation) + PI/2);
+  if(bullets.size() < 5)
+    bullets.add(new Bullet(bulletPos, bulletVel));
+}
+
+//Key presses
+void keyPressed()
+{
+  if(key == 'w' || key == 'W')
+    wPress = true;
+  if(key == 'a' || key == 'A')
+    aPress = true;
+  if(key == 'd' || key == 'D')
+    dPress = true;
+}
+
+//Key releases
+void keyReleased()
+{
+  if(key == 'w' || key == 'W')
+  {
+    wPress = false;
+    p1.acceleration = new PVector(0, 0);
+  }
+  if(key == 'a' || key == 'A')
+    aPress = false;
+  if(key == 'd' || key == 'D')
+    dPress = false;
+  if(key == ' ')
+    shoot();
+}
+
+  float headingTo(PVector vec)
+  {
+    //Like Clock ICE
+    return(float)(Math.atan2(vec.y, vec.x)); 
+  }
+  
+  void rotateTo(PVector vect, float angleTemp) 
+  {
+    float temp = vect.x;
+    vect.x = vect.x * cos(angleTemp) - vect.y * sin(angleTemp);
+    vect.y = temp * sin(angleTemp) + vect.y * cos(angleTemp);
+  }
+
+//Mouse Press for start/restart
+void mousePressed()
+{
+  if(lives <= 0)
+  {
+    lives = 3;
+    asteroids = new ArrayList<Asteroid>(0);
+  } 
+  else if(asteroids.size() == 0)
+    reset(); 
+}
+
+//Reset
+void reset()
+{
+  p1 = new Player();
+  smoke = new ArrayList<Movement>();
+  flame = new ArrayList<Movement>();
+  bullets = new ArrayList<Bullet>();
+  asteroids = new ArrayList<Asteroid>();
+  end = 1;
+  
+  for(int i = 0; i < numAsteroids; i++)
+  {
+    PVector position = new PVector((int)(Math.random() * width), (int)(Math.random() * height - 100));
+    //Check to make sure asteroid is not on top of player
+    if(position.x > (width/2 - 200) && position.x < (width/2 + 200) && position.y > (height/2 - 300) && position.y < (height/2 + 300))
+      position = new PVector((int)(Math.random() * width), (int)(Math.random() * height - 100));
+    asteroids.add(new Asteroid(position, startRadi, asteroidImgs));
+  }
+}
+ 
+//Draw game according to lives/asteroids
+void draw()
+{
+  if(lives >= 0 && asteroids.size() > 0)
+  {  
+    float angle = headingTo(p1.rotation) + PI/2;
+    background(255);
+    
+    //Display player
+    p1.move(smoke, flame);
+    p1.bounds();
+    p1.display();
+    if(p1.collision(asteroids))
+    {
+      lives--;
+      p1 = new Player();
+    }
+    
+    //Actually move the player
+    if(wPress) //Forward
+    {
+      p1.acceleration = new PVector(0, playerVel);
+      rotateTo(p1.acceleration, angle);
+    }
+    if(aPress) //Rotate left
+      rotateTo(p1.rotation, -rotationAng);
+    if(dPress) //Rotate right
+      rotateTo(p1.rotation, rotationAng);
+      
+    //Smoke/Flame trail
+    for(Movement m : smoke)
+    {
+      m.display();
+      m.update();
+    }
+    for(Movement m : flame)
+    {
+      m.display();
+      m.update();
+    }
+    
+    //Bullets
+    for(int i = 0; i < bullets.size(); i++)
+    {
+      bullets.get(i).bounds();
+      if(bullets.get(i).update())
+      {
+        bullets.remove(i);
+        i--;
+      }
+      if(i < 0)
+        break;
+      bullets.get(i).display();
+      if(bullets.get(i).collision(asteroids))
+      {
+        bullets.remove(i);
+        i--;
+      }
+    }
+    
+    //Remove excess
+    while(smoke.size() > 20)
+      smoke.remove(0);
+    while(flame.size() > 6)
+      flame.remove(0);
+      
+    //Asteroid methods
+    for(Asteroid aa : asteroids)
+    {
+      aa.move();
+      aa.bounds();
+      aa.display();
+    }
+    
+    //Text
+    fill(0);
+    textSize(20);
+    text("Lives: " + lives, 18, 40);
+    
+    //Display lives in corner
+    for(int i = 0; i < lives; i++)
+    {
+      image(livesPlayer, 40 * i + 10, p1.r * 1.5, 2.1 * p1.r, 3.1 * p1.r);
+    }
+    
+    end = 0;
+  }
+  //Game over state
+  else if(lives < 0)
+  {
+    //Blacken screen
+    fill(0);
+    rect(0, 0, width, height);
+    
+    //Text
+    fill(255);
+    textSize(50);
+    text("GAME OVER", width/2 - 150, height * .75);
+    
+    fill(255);
+    textSize(15);
+    text("Click anywhere to play again", width/2 - 100, height * .92);
+    
+    end = 1;
+  }
+
+  else
+  {
+    background(0);
+    p1 = new Player();
+    p1.display();
+    
+    if(end == 1)
+    {
+      //Intro
+      fill(255);
+      textSize(40);
+      text("ASTEROIDS", width/2 - 100, height/2);
+    }
+    else if(end == 0)
+    {
+      //Win    
+      fill(255);
+      textSize(40);
+      text("CONGRATULATIONS! YOU WIN!", width/2 - 280, height/2);
+      lives = 3;
+    }
+    
+    //Start
+    fill(255);
+    textSize(15);
+    text("Click anywhere to play.", width/2 - 75, height * .92);    
+  }
+}
