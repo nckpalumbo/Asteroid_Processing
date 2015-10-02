@@ -1,0 +1,115 @@
+class Player
+{
+  //Variables
+  float drag = .8;
+  float r = 25;
+  PImage playerImg;
+  PVector position, velocity, acceleration, rotation;
+  
+  //Constructor
+  Player()
+  {
+    //Load images
+    playerImg = loadImage("Player2.png");
+    
+    //Setup initial vectors
+    position = new PVector((width/2), height/2);
+    acceleration = new PVector(0, 0);
+    velocity = new PVector(0, 0);
+    rotation = new PVector(0, 1);
+    velocity.limit(5.5);
+  }
+   
+  //Rotation/Direction
+  float headingTo(PVector vec)
+  {
+    //Like Clock ICE
+    return(float)(Math.atan2(vec.y, vec.x)); 
+  }
+  
+  //Rotate
+  void rotateTo(PVector vect, float angleTemp) 
+  {
+    float temp = vect.x;
+    vect.x = vect.x * cos(angleTemp) - vect.y * sin(angleTemp);
+    vect.y = temp * sin(angleTemp) + vect.y * cos(angleTemp);
+  }
+  
+  //Movement - Smoke trail
+  void move(ArrayList<Movement> move, ArrayList<Movement> smoke)
+  {
+    PVector out = new PVector(0, -r);
+    rotateTo(out, headingTo(rotation) + PI/2);
+    out.add(position);
+    color gray = color (90, 80);
+    
+    int trail = (int)(velocity.mag() + 1);
+    for(int i = 0; i < trail; i++)
+    {
+      float angle = (float)(Math.random() * .5 - .25);
+      angle += headingTo(rotation);
+      PVector direction = new PVector(cos(angle), sin(angle));
+      move.add(new Movement(out, direction, gray, 15)); //Smoke circles
+    }
+    
+    for(int i = 0; i < 1; i++)
+    {
+      float angle = (float)(Math.random() * .5 - .25);
+      angle += headingTo(rotation);
+      
+      PVector direction = new PVector(cos(angle), sin(angle));
+      direction.y = 0;
+      out.add(direction);
+      out.y -= .5;
+      color fire = color(226, 88, 34);
+      smoke.add(new Movement(out, direction, fire, 5)); //Fire circles
+    }
+    
+    //Movement
+    velocity.add(acceleration);
+    velocity.mult(drag);
+    position.add(velocity);
+  }
+  
+  //Wrapping player
+  void bounds()
+  {
+    if(position.x < r)
+      position.x = width - r;
+    if(position.y < r)
+      position.y = height - r;
+    if(position.x > width - r)
+      position.x = r;
+    if(position.y > height - r)
+      position.y = r;
+  }
+  
+  //Collisions
+  boolean collision(ArrayList<Asteroid> asteroids)
+  {
+    for(Asteroid aa : asteroids)
+    {
+      PVector dista = PVector.sub(aa.position, position);
+      if(dista.mag() < aa.radius + r/1)
+      {
+        aa.breakApart(asteroids);
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  //Display player
+  void display()
+  {
+    float angle = headingTo(rotation) + PI/2;
+    angle += PI;
+    
+    pushMatrix();
+    translate(position.x, position.y);
+    rotate(angle);
+    
+    image(playerImg, -r, -r * 1.5, 2 * r, 3 * r);
+    popMatrix();
+  }
+}
